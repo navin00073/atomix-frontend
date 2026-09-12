@@ -1,0 +1,6 @@
+{
+  "name": "TECH SHIELD 2.0 - AtomiX Hospital Automation",
+  "description": "AI-Powered Hospital Automation, Patient Intelligence & Smart Medicine Delivery System by Team AtomiX",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
