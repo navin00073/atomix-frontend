@@ -37,7 +37,7 @@ import {
 import { INITIAL_EMERGENCIES, DEMO_PRESET_EMERGENCIES } from '../data/emergencyData';
 import { DEMO_USERS } from '../data/userData';
 import { soundEffects } from '../utils/audio';
-import { authApi, setToken } from '../api';
+import { authApi, setToken, patientsApi } from '../api';
 
 interface DemoProgress {
   isRunning: boolean;
@@ -295,6 +295,23 @@ export const HospitalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Entities
   const [patients, setPatients] = useState<Patient[]>(() => loadStorageArray('techshield_patients', INITIAL_PATIENTS));
+
+  // On mount: try loading patients from the real backend. If it succeeds,
+  // the backend becomes the source of truth (overrides local/demo data).
+  // If the backend is unreachable, we silently keep the local/demo data
+  // so the app still works offline.
+  useEffect(() => {
+    patientsApi
+      .list()
+      .then((backendPatients) => {
+        if (Array.isArray(backendPatients) && backendPatients.length > 0) {
+          setPatients(backendPatients as Patient[]);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not load patients from backend, using local data:', err);
+      });
+  }, []);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>('PT-1024');
   const [staff, setStaff] = useState<StaffMember[]>(() => loadStorageArray('techshield_staff', INITIAL_STAFF));
   const [medicines, setMedicines] = useState<Medicine[]>(() => loadStorageArray('techshield_medicines', INITIAL_MEDICINES));
@@ -1028,6 +1045,13 @@ export const HospitalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         patientId: newId,
       });
 
+      // Persist to the real backend in the background (same id, so the
+      // UI doesn't need to wait or reconcile ids). If this fails (e.g.
+      // backend offline), the patient still exists locally for this session.
+      patientsApi.create(newPatient).catch((err) => {
+        console.warn('Failed to save patient to backend:', err);
+      });
+
       return newPatient;
     },
     [patients.length, addAuditLog]
@@ -1069,6 +1093,10 @@ export const HospitalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           severity: 'INFO',
           patientId,
         });
+
+        patientsApi.update(patientId, updatedData).catch((err) => {
+          console.warn('Failed to update patient on backend:', err);
+        });
       }
 
       return updatedPt;
@@ -1100,6 +1128,10 @@ export const HospitalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         category: 'SECURITY',
         severity: 'WARNING',
         patientId,
+      });
+
+      patientsApi.remove(patientId).catch((err) => {
+        console.warn('Failed to delete patient on backend:', err);
       });
 
       return true;
