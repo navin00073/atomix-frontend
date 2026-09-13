@@ -422,9 +422,17 @@ export const HospitalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
 
     if (!userToLogin) {
+      const knownUser = DEMO_USERS.find((u) => u.email.toLowerCase() === trimmedEmail);
       const matched = DEMO_USERS.find(
-        (u) => u.email.toLowerCase() === trimmedEmail && (u.password === password || password === 'atomix2026' || password === 'admin' || password === 'doctor')
+        (u) => u.email.toLowerCase() === trimmedEmail && u.password === password
       );
+
+      // If the email belongs to a known demo account but the password is
+      // wrong, reject immediately - don't fall through to the generic
+      // fallback account below.
+      if (knownUser && !matched) {
+        return { success: false, message: 'Invalid email or password' };
+      }
 
       userToLogin = matched
         ? {
@@ -449,10 +457,6 @@ export const HospitalProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             avatarUrl: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80',
             lastLogin: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           };
-
-      if (!DEMO_USERS.some((u) => u.email.toLowerCase() === trimmedEmail)) {
-        return { success: false, message: 'Invalid email or password' };
-      }
     }
 
     setCurrentUser(userToLogin);
